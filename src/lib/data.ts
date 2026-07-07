@@ -14,6 +14,7 @@ export type CessionRow = {
   date_parution: string;
   denomination: string | null;
   ville: string | null;
+  departement: string | null;
   departement_nom: string | null;
   region_nom: string | null;
   naf_code: string | null;
@@ -26,7 +27,7 @@ export type CessionRow = {
 
 const ROW_LIMIT = 5000;
 const LIST_COLUMNS =
-  "id, date_parution, denomination, ville, departement_nom, region_nom, naf_code, naf_label, effectifs, score, score_details, url_bodacc";
+  "id, date_parution, denomination, ville, departement, departement_nom, region_nom, naf_code, naf_label, effectifs, score, score_details, url_bodacc";
 
 export async function getCessions(): Promise<CessionRow[]> {
   const supabase = supabasePublic();

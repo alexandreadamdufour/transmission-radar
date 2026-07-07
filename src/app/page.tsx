@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { getCessions, getLastUpdatedAt } from "@/lib/data";
+import { computeDeptStats } from "@/lib/departements";
 import { KpiCard } from "@/components/KpiCard";
 import { MonthlyVolumeChart } from "@/components/MonthlyVolumeChart";
 import { RegionalChart } from "@/components/RegionalChart";
 import { CessionsTable } from "@/components/CessionsTable";
 import { SiteFooter } from "@/components/SiteFooter";
+import { Reveal } from "@/components/Reveal";
+import { FranceMapLoader } from "@/components/FranceMapLoader";
 
 export const revalidate = 3600;
 
@@ -84,6 +87,8 @@ export default async function Home() {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 10)
     .map(([region, count]) => ({ region, count }));
+
+  const deptStats = [...computeDeptStats(rows).values()].sort((a, b) => b.count - a.count);
 
   const regions = [...new Set(rows.map((r) => r.region_nom).filter((v): v is string => Boolean(v)))].sort();
   const secteurs = [...new Set(rows.map((r) => r.naf_label).filter((v): v is string => Boolean(v)))].sort();
@@ -180,24 +185,42 @@ export default async function Home() {
 
       <section className="bg-section-alt">
         <div className="mx-auto max-w-[1200px] px-6 py-20">
-          <h2 className="font-serif-display text-[32px] leading-tight tracking-[-0.4px] text-ink">
-            Où et quand ça se passe
-          </h2>
-          <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <MonthlyVolumeChart
-              data={monthlyVolume}
-              note={
-                collectionStillRampingUp && earliestDate
-                  ? `Collecte démarrée le ${new Date(earliestDate).toLocaleDateString("fr-FR")} — historique en cours de constitution.`
-                  : undefined
-              }
-            />
-            <RegionalChart data={regionalBreakdown} />
-          </div>
+          <Reveal>
+            <h2 className="font-serif-display text-[32px] leading-tight tracking-[-0.4px] text-ink">
+              Où la vague frappe
+            </h2>
+            <p className="mt-3 max-w-2xl text-muted">
+              Intensité des cessions par département, sur la fenêtre suivie par Transmission Radar.
+            </p>
+            <div className="mt-8 rounded-[24px] bg-nested p-6">
+              <FranceMapLoader stats={deptStats} />
+            </div>
+          </Reveal>
         </div>
       </section>
 
-      <section id="annonces" className="scroll-mt-8 bg-canvas">
+      <section className="bg-canvas">
+        <div className="mx-auto max-w-[1200px] px-6 py-20">
+          <Reveal>
+            <h2 className="font-serif-display text-[32px] leading-tight tracking-[-0.4px] text-ink">
+              Où et quand ça se passe
+            </h2>
+            <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <MonthlyVolumeChart
+                data={monthlyVolume}
+                note={
+                  collectionStillRampingUp && earliestDate
+                    ? `Collecte démarrée le ${new Date(earliestDate).toLocaleDateString("fr-FR")} — historique en cours de constitution.`
+                    : undefined
+                }
+              />
+              <RegionalChart data={regionalBreakdown} />
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      <section id="annonces" className="scroll-mt-8 bg-section-alt">
         <div className="mx-auto max-w-[1200px] px-6 py-20">
           <h2 className="font-serif-display text-[32px] leading-tight tracking-[-0.4px] text-ink">
             Les annonces
