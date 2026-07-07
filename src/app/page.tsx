@@ -150,19 +150,27 @@ export default async function Home() {
             <KpiCard
               label="Cessions suivies"
               value={rows.length.toLocaleString("fr-FR")}
+              animateTo={rows.length}
               hint="fenêtre en base"
               trend={volumeTrend}
             />
-            <KpiCard label="Ce mois-ci" value={cessionsThisMonth.toLocaleString("fr-FR")} trend={volumeTrend} />
+            <KpiCard
+              label="Ce mois-ci"
+              value={cessionsThisMonth.toLocaleString("fr-FR")}
+              animateTo={cessionsThisMonth}
+              trend={volumeTrend}
+            />
             <KpiCard
               label="Score moyen"
               value={avgScore != null ? String(avgScore) : "N/A"}
+              animateTo={avgScore ?? undefined}
               hint={`${scored.length.toLocaleString("fr-FR")} annonces enrichies`}
               trend={scoreTrend}
             />
             <KpiCard
               label="Opportunités fortes"
               value={strongOpportunities.toLocaleString("fr-FR")}
+              animateTo={strongOpportunities}
               hint="score ≥ 70"
               trend={opportunityTrend}
             />

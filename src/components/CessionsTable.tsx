@@ -67,31 +67,33 @@ export function CessionsTable({
   regions: string[];
   secteurs: string[];
 }) {
-  const [region, setRegion] = useState("");
-  const [secteur, setSecteur] = useState("");
-  const [minScore, setMinScore] = useState(0);
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState({ region: "", secteur: "", minScore: 0, search: "", includeAll: false });
+  const { region, secteur, minScore, search, includeAll } = filters;
   const [searchInput, setSearchInput] = useState("");
-  const [includeAll, setIncludeAll] = useState(false);
   const [page, setPage] = useState(1);
 
-  // Hydrate filter state from the URL once, on mount (shareable links).
+  // Hydrate filter state from the URL once, on mount (shareable links). A single
+  // setState call here (not one per field) keeps this an external-system sync,
+  // not a cascading-render pattern.
   useEffect(() => {
     const params = readParams();
     if (!params) return;
-    setRegion(params.get("region") ?? "");
-    setSecteur(params.get("secteur") ?? "");
-    setMinScore(Number(params.get("score") ?? 0));
-    setSearchInput(params.get("q") ?? "");
-    setSearch(params.get("q") ?? "");
-    setIncludeAll(params.get("all") === "1");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const q = params.get("q") ?? "";
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from the URL on mount
+    setSearchInput(q);
+    setFilters({
+      region: params.get("region") ?? "",
+      secteur: params.get("secteur") ?? "",
+      minScore: Number(params.get("score") ?? 0),
+      search: q,
+      includeAll: params.get("all") === "1",
+    });
   }, []);
 
   // Debounce the free-text search before it hits the filter + URL.
   useEffect(() => {
     const t = setTimeout(() => {
-      setSearch(searchInput);
+      setFilters((f) => ({ ...f, search: searchInput }));
       setPage(1);
     }, 250);
     return () => clearTimeout(t);
@@ -122,9 +124,9 @@ export function CessionsTable({
   const excludedCount = rows.length - rows.filter(isQualifiedPme).length;
   const paginated = filtered.slice(0, page * PAGE_SIZE);
 
-  function resetPage<T>(setter: (v: T) => void) {
-    return (v: T) => {
-      setter(v);
+  function updateFilter<K extends keyof typeof filters>(key: K) {
+    return (value: (typeof filters)[K]) => {
+      setFilters((f) => ({ ...f, [key]: value }));
       setPage(1);
     };
   }
@@ -145,7 +147,7 @@ export function CessionsTable({
           }}
           className={`min-w-[220px] flex-1 ${fieldClasses}`}
         />
-        <select value={region} onChange={(e) => resetPage(setRegion)(e.target.value)} className={fieldClasses}>
+        <select value={region} onChange={(e) => updateFilter("region")(e.target.value)} className={fieldClasses}>
           <option value="">Toutes régions</option>
           {regions.map((r) => (
             <option key={r} value={r}>
@@ -153,7 +155,7 @@ export function CessionsTable({
             </option>
           ))}
         </select>
-        <select value={secteur} onChange={(e) => resetPage(setSecteur)(e.target.value)} className={fieldClasses}>
+        <select value={secteur} onChange={(e) => updateFilter("secteur")(e.target.value)} className={fieldClasses}>
           <option value="">Tous secteurs</option>
           {secteurs.map((s) => (
             <option key={s} value={s}>
@@ -163,7 +165,7 @@ export function CessionsTable({
         </select>
         <select
           value={minScore}
-          onChange={(e) => resetPage(setMinScore)(Number(e.target.value))}
+          onChange={(e) => updateFilter("minScore")(Number(e.target.value))}
           className={fieldClasses}
         >
           <option value={0}>Tous scores</option>
@@ -183,7 +185,7 @@ export function CessionsTable({
           <input
             type="checkbox"
             checked={includeAll}
-            onChange={(e) => resetPage(setIncludeAll)(e.target.checked)}
+            onChange={(e) => updateFilter("includeAll")(e.target.checked)}
             className="h-3.5 w-3.5 accent-[#1f4d3f]"
           />
           Inclure les fonds de commerce
