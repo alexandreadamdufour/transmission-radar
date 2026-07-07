@@ -43,6 +43,11 @@ function isQualifiedPme(r: CessionRow): boolean {
   return (r.score ?? -1) >= QUALIFIED_MIN_SCORE || hasQualifyingHeadcount(r.effectifs);
 }
 
+function isRecent(dateParution: string): boolean {
+  const hours = (Date.now() - new Date(dateParution).getTime()) / 3_600_000;
+  return hours >= 0 && hours < 48;
+}
+
 function readParams() {
   if (typeof window === "undefined") return null;
   return new URLSearchParams(window.location.search);
@@ -98,6 +103,19 @@ export function CessionsTable({
     }, 250);
     return () => clearTimeout(t);
   }, [searchInput]);
+
+  // Subscribe to department selection from the France map (search already matches departement_nom).
+  useEffect(() => {
+    function onDeptSelect(e: Event) {
+      const nom = (e as CustomEvent<{ nom: string }>).detail?.nom;
+      if (!nom) return;
+      setSearchInput(nom);
+      setFilters((f) => ({ ...f, search: nom }));
+      setPage(1);
+    }
+    window.addEventListener("radar:filter-departement", onDeptSelect);
+    return () => window.removeEventListener("radar:filter-departement", onDeptSelect);
+  }, []);
 
   useEffect(() => {
     writeParams({ region, secteur, score: minScore ? String(minScore) : "", q: search, all: includeAll ? "1" : "" });
@@ -213,7 +231,10 @@ export function CessionsTable({
               <tr key={r.id} className="rounded-2xl bg-canvas [&>td:first-child]:rounded-l-2xl [&>td:last-child]:rounded-r-2xl">
                 <td className="tabular whitespace-nowrap px-4 py-3 text-muted">{formatDate(r.date_parution)}</td>
                 <td className="px-4 py-3 font-medium text-ink">
-                  <a href={`/annonce/${r.id}`} className="hover:underline">
+                  <a href={`/annonce/${r.id}`} className="inline-flex items-center gap-2 hover:underline">
+                    {isRecent(r.date_parution) && (
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" title="Nouveau (moins de 48h)" />
+                    )}
                     {r.denomination ?? "—"}
                   </a>
                 </td>
@@ -231,7 +252,20 @@ export function CessionsTable({
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <p className="p-8 text-center text-sm text-tertiary">Aucune cession ne correspond aux filtres.</p>
+          <div className="flex flex-col items-center gap-3 px-8 py-16 text-center">
+            <p className="font-serif-display text-3xl text-ink/20">∅</p>
+            <p className="text-sm text-muted">Aucune cession ne correspond à ces filtres.</p>
+            <button
+              onClick={() => {
+                setFilters({ region: "", secteur: "", minScore: 0, search: "", includeAll });
+                setSearchInput("");
+                setPage(1);
+              }}
+              className="transition-filters mt-1 rounded-full border border-ink/20 px-4 py-1.5 text-xs font-medium text-ink hover:bg-ink hover:text-white"
+            >
+              Réinitialiser les filtres
+            </button>
+          </div>
         )}
       </div>
 
