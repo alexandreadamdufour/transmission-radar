@@ -2,11 +2,23 @@
 
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 
-export function MonthlyVolumeChart({ data }: { data: { month: string; count: number }[] }) {
+export function MonthlyVolumeChart({
+  data,
+  note,
+}: {
+  data: { month: string; count: number }[];
+  note?: string;
+}) {
   return (
     <div className="rounded-[24px] bg-nested p-6">
-      <h3 className="text-sm font-medium text-tertiary">Volume mensuel des cessions</h3>
+      <h3 className="text-sm font-medium text-tertiary">Volume mensuel des cessions (mois complets)</h3>
+      {note && <p className="mt-1 text-xs text-tertiary">{note}</p>}
       <div className="mt-6 h-64">
+        {data.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-sm text-tertiary">
+            Pas encore un mois complet de données.
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
             <XAxis
@@ -37,6 +49,7 @@ export function MonthlyVolumeChart({ data }: { data: { month: string; count: num
             />
           </LineChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

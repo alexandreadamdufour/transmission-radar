@@ -1,6 +1,7 @@
 import { fetchVentesEtCessions, type BodaccRecord } from "./bodacc";
 import { enrichBySiren, createThrottle } from "./sirene";
 import { computeScore } from "./scoring";
+import { nafFamily } from "./naf";
 import { supabaseAdmin } from "./supabase";
 
 export type IngestResult = {
@@ -86,7 +87,7 @@ async function enrichRecord(record: BodaccRecord, throttle: <T>(fn: () => Promis
     region_nom: record.region_nom,
     url_bodacc: record.url_bodacc,
     naf_code: enrichment?.naf_code ?? null,
-    naf_label: scored?.details.secteur ?? null,
+    naf_label: enrichment?.naf_code ? nafFamily(enrichment.naf_code) : null,
     effectifs: enrichment?.effectifs ?? null,
     date_creation_entreprise: enrichment?.date_creation_entreprise ?? null,
     enriched: enrichment != null,

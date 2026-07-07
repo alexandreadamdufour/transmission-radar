@@ -1,17 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CessionRow } from "@/lib/data";
-import { effectifsLabel, formatDate, scoreBand } from "@/lib/format";
+import { effectifsLabel, effectifsTooltip, formatDate, hasQualifyingHeadcount } from "@/lib/format";
+import { ScoreBadge } from "./ScoreBadge";
 
 const PAGE_SIZE = 25;
-
-const scoreBandStyles: Record<string, string> = {
-  high: "bg-accent text-white",
-  medium: "bg-ink/10 text-ink",
-  low: "bg-ink/5 text-muted",
-  none: "bg-ink/5 text-tertiary",
-};
+const QUALIFIED_MIN_SCORE = 40;
 
 function toCsv(rows: CessionRow[]): string {
   const header = ["date", "entreprise", "ville", "departement", "region", "secteur", "effectifs", "score", "url_bodacc"];
@@ -44,6 +39,25 @@ function downloadCsv(rows: CessionRow[]) {
   URL.revokeObjectURL(url);
 }
 
+function isQualifiedPme(r: CessionRow): boolean {
+  return (r.score ?? -1) >= QUALIFIED_MIN_SCORE || hasQualifyingHeadcount(r.effectifs);
+}
+
+function readParams() {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search);
+}
+
+function writeParams(params: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  for (const [key, value] of Object.entries(params)) {
+    if (value) url.searchParams.set(key, value);
+    else url.searchParams.delete(key);
+  }
+  window.history.replaceState(null, "", url.toString());
+}
+
 export function CessionsTable({
   rows,
   regions,
@@ -57,18 +71,55 @@ export function CessionsTable({
   const [secteur, setSecteur] = useState("");
   const [minScore, setMinScore] = useState(0);
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [includeAll, setIncludeAll] = useState(false);
   const [page, setPage] = useState(1);
 
+  // Hydrate filter state from the URL once, on mount (shareable links).
+  useEffect(() => {
+    const params = readParams();
+    if (!params) return;
+    setRegion(params.get("region") ?? "");
+    setSecteur(params.get("secteur") ?? "");
+    setMinScore(Number(params.get("score") ?? 0));
+    setSearchInput(params.get("q") ?? "");
+    setSearch(params.get("q") ?? "");
+    setIncludeAll(params.get("all") === "1");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounce the free-text search before it hits the filter + URL.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    writeParams({ region, secteur, score: minScore ? String(minScore) : "", q: search, all: includeAll ? "1" : "" });
+  }, [region, secteur, minScore, search, includeAll]);
+
   const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
     return rows.filter((r) => {
+      if (!includeAll && !isQualifiedPme(r)) return false;
       if (region && r.region_nom !== region) return false;
       if (secteur && r.naf_label !== secteur) return false;
       if (minScore > 0 && (r.score ?? -1) < minScore) return false;
-      if (search && !r.denomination?.toLowerCase().includes(search.toLowerCase())) return false;
+      if (
+        term &&
+        !r.denomination?.toLowerCase().includes(term) &&
+        !r.ville?.toLowerCase().includes(term) &&
+        !r.departement_nom?.toLowerCase().includes(term)
+      )
+        return false;
       return true;
     });
-  }, [rows, region, secteur, minScore, search]);
+  }, [rows, region, secteur, minScore, search, includeAll]);
 
+  const excludedCount = rows.length - rows.filter(isQualifiedPme).length;
   const paginated = filtered.slice(0, page * PAGE_SIZE);
 
   function resetPage<T>(setter: (v: T) => void) {
@@ -86,9 +137,12 @@ export function CessionsTable({
       <div className="flex flex-wrap items-center gap-3 p-6">
         <input
           type="text"
-          placeholder="Rechercher une entreprise..."
-          value={search}
-          onChange={(e) => resetPage(setSearch)(e.target.value)}
+          placeholder="Entreprise, ville, département..."
+          value={searchInput}
+          onChange={(e) => {
+            setSearchInput(e.target.value);
+            setPage(1);
+          }}
           className={`min-w-[220px] flex-1 ${fieldClasses}`}
         />
         <select value={region} onChange={(e) => resetPage(setRegion)(e.target.value)} className={fieldClasses}>
@@ -114,7 +168,7 @@ export function CessionsTable({
         >
           <option value={0}>Tous scores</option>
           <option value={70}>Score ≥ 70</option>
-          <option value={45}>Score ≥ 45</option>
+          <option value={40}>Score ≥ 40</option>
         </select>
         <button
           onClick={() => downloadCsv(filtered)}
@@ -122,6 +176,21 @@ export function CessionsTable({
         >
           Export CSV ({filtered.length})
         </button>
+      </div>
+
+      <div className="flex items-center gap-2 px-6 pb-4">
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
+          <input
+            type="checkbox"
+            checked={includeAll}
+            onChange={(e) => resetPage(setIncludeAll)(e.target.checked)}
+            className="h-3.5 w-3.5 accent-[#1f4d3f]"
+          />
+          Inclure les fonds de commerce
+          {!includeAll && excludedCount > 0 && (
+            <span className="text-tertiary">({excludedCount.toLocaleString("fr-FR")} masqués)</span>
+          )}
+        </label>
       </div>
 
       <div className="overflow-x-auto px-2 pb-2">
@@ -142,24 +211,18 @@ export function CessionsTable({
               <tr key={r.id} className="rounded-2xl bg-canvas [&>td:first-child]:rounded-l-2xl [&>td:last-child]:rounded-r-2xl">
                 <td className="tabular whitespace-nowrap px-4 py-3 text-muted">{formatDate(r.date_parution)}</td>
                 <td className="px-4 py-3 font-medium text-ink">
-                  {r.url_bodacc ? (
-                    <a href={r.url_bodacc} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      {r.denomination ?? "—"}
-                    </a>
-                  ) : (
-                    r.denomination ?? "—"
-                  )}
+                  <a href={`/annonce/${r.id}`} className="hover:underline">
+                    {r.denomination ?? "—"}
+                  </a>
                 </td>
                 <td className="px-4 py-3 text-muted">{r.ville ?? "—"}</td>
                 <td className="px-4 py-3 text-muted">{r.region_nom ?? "—"}</td>
                 <td className="px-4 py-3 text-muted">{r.naf_label ?? "—"}</td>
-                <td className="tabular whitespace-nowrap px-4 py-3 text-muted">{effectifsLabel(r.effectifs)}</td>
+                <td className="tabular whitespace-nowrap px-4 py-3 text-muted" title={effectifsTooltip(r.effectifs)}>
+                  {effectifsLabel(r.effectifs)}
+                </td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`tabular rounded-full px-2.5 py-1 text-xs font-medium ${scoreBandStyles[scoreBand(r.score)]}`}
-                  >
-                    {r.score ?? "N/A"}
-                  </span>
+                  <ScoreBadge score={r.score} details={r.score_details} />
                 </td>
               </tr>
             ))}
