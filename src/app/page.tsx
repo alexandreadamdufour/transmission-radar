@@ -195,6 +195,18 @@ export default async function Home() {
             <div className="mt-8 rounded-[24px] bg-nested p-6">
               <FranceMapLoader stats={deptStats} />
             </div>
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-tertiary">Départements les plus actifs :</span>
+              {deptStats.slice(0, 8).map((d) => (
+                <Link
+                  key={d.code}
+                  href={`/departement/${d.code}`}
+                  className="transition-filters rounded-full border border-ink/15 px-3 py-1 text-xs text-muted hover:border-ink hover:text-ink"
+                >
+                  {d.nom}
+                </Link>
+              ))}
+            </div>
           </Reveal>
         </div>
       </section>
