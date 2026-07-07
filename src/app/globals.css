@@ -1,26 +1,60 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-ink: #17191c;
+  --color-canvas: #ffffff;
+  --color-nested: #f2f2f3;
+  --color-section-alt: #fafafb;
+  --color-muted: #777b86;
+  --color-tertiary: #979799;
+  --color-accent: #1f4d3f;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ink: var(--color-ink);
+  --color-canvas: var(--color-canvas);
+  --color-nested: var(--color-nested);
+  --color-section-alt: var(--color-section-alt);
+  --color-muted: var(--color-muted);
+  --color-tertiary: var(--color-tertiary);
+  --color-accent: var(--color-accent);
+  --font-serif: var(--font-fraunces);
+  --font-sans: var(--font-inter);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-serif-display {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-weight: 400;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+h1.display,
+h2.display {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-weight: 400;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .transition-filters {
+    transition:
+      background-color 200ms ease,
+      border-color 200ms ease,
+      color 200ms ease,
+      opacity 200ms ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+  }
 }

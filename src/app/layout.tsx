@@ -1,21 +1,43 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["400", "500"],
 });
+
+const title = "Transmission Radar";
+const description =
+  "Suivi public des cessions de PME françaises — compagnon de la note Institut Sapiens sur la vague de transmission 2025-2035.";
 
 export const metadata: Metadata = {
-  title: "Transmission Radar",
-  description:
-    "Suivi public des cessions de PME françaises — compagnon de la note Institut Sapiens sur la vague de transmission 2025-2035.",
+  metadataBase: new URL("https://transmission-radar.vercel.app"),
+  title: {
+    default: title,
+    template: `%s — ${title}`,
+  },
+  description,
+  openGraph: {
+    title,
+    description,
+    type: "website",
+    locale: "fr_FR",
+    siteName: title,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+  },
 };
 
 export default function RootLayout({
@@ -26,9 +48,9 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-canvas text-ink">{children}</body>
     </html>
   );
 }

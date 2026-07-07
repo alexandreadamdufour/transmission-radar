@@ -17,6 +17,26 @@ function monthLabel(key: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
 }
 
+function weekKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  const oneJan = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil(((d.getTime() - oneJan.getTime()) / 86400000 + oneJan.getDay() + 1) / 7);
+  return `${d.getFullYear()}-${String(week).padStart(2, "0")}`;
+}
+
+function weeklySeries<T>(rows: T[], dateOf: (r: T) => string, value: (r: T[]) => number, weeks = 10) {
+  const buckets = new Map<string, T[]>();
+  for (const r of rows) {
+    const key = weekKey(dateOf(r));
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(r);
+  }
+  return [...buckets.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-weeks)
+    .map(([, items]) => ({ value: value(items) }));
+}
+
 export default async function Home() {
   const rows = await getCessions();
 
@@ -51,48 +71,95 @@ export default async function Home() {
   const regions = [...new Set(rows.map((r) => r.region_nom).filter((v): v is string => Boolean(v)))].sort();
   const secteurs = [...new Set(rows.map((r) => r.naf_label).filter((v): v is string => Boolean(v)))].sort();
 
+  const volumeTrend = weeklySeries(rows, (r) => r.date_parution, (items) => items.length);
+  const scoreTrend = weeklySeries(
+    rows.filter((r) => r.score != null),
+    (r) => r.date_parution,
+    (items) => Math.round(items.reduce((s, r) => s + (r.score ?? 0), 0) / items.length)
+  );
+  const opportunityTrend = weeklySeries(
+    rows,
+    (r) => r.date_parution,
+    (items) => items.filter((r) => (r.score ?? 0) >= 70).length
+  );
+
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+    <div className="min-h-screen bg-canvas">
+      <header className="bg-canvas">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-8">
           <div>
-            <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Transmission Radar</h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Suivi public des cessions de PME françaises — BODACC × SIRENE
-            </p>
+            <p className="text-sm font-medium text-tertiary">Institut Sapiens · La vague de transmission</p>
+            <h1 className="font-serif-display mt-1 text-[44px] leading-[1.05] tracking-[-0.66px] text-ink">
+              Transmission Radar
+            </h1>
           </div>
           <Link
             href="/methodologie"
-            className="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+            className="transition-filters shrink-0 rounded-full border border-ink px-5 py-2 text-sm font-medium text-ink hover:bg-ink hover:text-white"
           >
-            Méthodologie →
+            Méthodologie
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard label="Cessions suivies" value={rows.length.toLocaleString("fr-FR")} hint="fenêtre en base" />
-          <KpiCard label="Ce mois-ci" value={cessionsThisMonth.toLocaleString("fr-FR")} />
-          <KpiCard
-            label="Score moyen"
-            value={avgScore != null ? String(avgScore) : "N/A"}
-            hint={`${scored.length.toLocaleString("fr-FR")} annonces enrichies`}
-          />
-          <KpiCard label="Opportunités fortes" value={strongOpportunities.toLocaleString("fr-FR")} hint="score ≥ 70" />
+      <section className="bg-canvas">
+        <div className="mx-auto max-w-[1200px] px-6 pb-20">
+          <p className="max-w-2xl text-lg text-muted">
+            Suivi public des cessions de PME françaises — BODACC × SIRENE, scoré et mis à jour chaque jour.
+          </p>
+
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard
+              label="Cessions suivies"
+              value={rows.length.toLocaleString("fr-FR")}
+              hint="fenêtre en base"
+              trend={volumeTrend}
+            />
+            <KpiCard label="Ce mois-ci" value={cessionsThisMonth.toLocaleString("fr-FR")} trend={volumeTrend} />
+            <KpiCard
+              label="Score moyen"
+              value={avgScore != null ? String(avgScore) : "N/A"}
+              hint={`${scored.length.toLocaleString("fr-FR")} annonces enrichies`}
+              trend={scoreTrend}
+            />
+            <KpiCard
+              label="Opportunités fortes"
+              value={strongOpportunities.toLocaleString("fr-FR")}
+              hint="score ≥ 70"
+              trend={opportunityTrend}
+            />
+          </div>
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <MonthlyVolumeChart data={monthlyVolume} />
-          <RegionalChart data={regionalBreakdown} />
+      <section className="bg-section-alt">
+        <div className="mx-auto max-w-[1200px] px-6 py-20">
+          <h2 className="font-serif-display text-[32px] leading-tight tracking-[-0.4px] text-ink">
+            Où et quand ça se passe
+          </h2>
+          <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <MonthlyVolumeChart data={monthlyVolume} />
+            <RegionalChart data={regionalBreakdown} />
+          </div>
         </div>
+      </section>
 
-        <CessionsTable rows={rows} regions={regions} secteurs={secteurs} />
-      </main>
+      <section className="bg-canvas">
+        <div className="mx-auto max-w-[1200px] px-6 py-20">
+          <h2 className="font-serif-display text-[32px] leading-tight tracking-[-0.4px] text-ink">
+            Les annonces
+          </h2>
+          <div className="mt-8">
+            <CessionsTable rows={rows} regions={regions} secteurs={secteurs} />
+          </div>
+        </div>
+      </section>
 
-      <footer className="mx-auto max-w-6xl px-6 py-8 text-center text-xs text-zinc-400">
-        Données publiques BODACC (Opendatasoft) et SIRENE (recherche-entreprises.api.gouv.fr). Companion tool de la
-        note Institut Sapiens « La vague de transmission des PME françaises (2025-2035) ».
+      <footer className="bg-section-alt">
+        <div className="mx-auto max-w-[1200px] px-6 py-12 text-center text-xs text-tertiary">
+          Données publiques BODACC (Opendatasoft) et SIRENE (recherche-entreprises.api.gouv.fr). Companion tool de la
+          note Institut Sapiens « La vague de transmission des PME françaises (2025-2035) ».
+        </div>
       </footer>
     </div>
   );

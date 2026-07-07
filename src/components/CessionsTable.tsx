@@ -7,10 +7,10 @@ import { effectifsLabel, formatDate, scoreBand } from "@/lib/format";
 const PAGE_SIZE = 25;
 
 const scoreBandStyles: Record<string, string> = {
-  high: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400",
-  medium: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
-  low: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  none: "bg-zinc-50 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-600",
+  high: "bg-accent text-white",
+  medium: "bg-ink/10 text-ink",
+  low: "bg-ink/5 text-muted",
+  none: "bg-ink/5 text-tertiary",
 };
 
 function toCsv(rows: CessionRow[]): string {
@@ -78,21 +78,20 @@ export function CessionsTable({
     };
   }
 
+  const fieldClasses =
+    "transition-filters rounded-full border border-ink/15 bg-canvas px-4 py-2 text-sm text-ink placeholder:text-tertiary focus:outline-none focus:border-ink/40";
+
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex flex-wrap items-center gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
+    <div className="rounded-[24px] bg-nested">
+      <div className="flex flex-wrap items-center gap-3 p-6">
         <input
           type="text"
           placeholder="Rechercher une entreprise..."
           value={search}
           onChange={(e) => resetPage(setSearch)(e.target.value)}
-          className="min-w-[200px] flex-1 rounded-lg border border-zinc-200 bg-transparent px-3 py-1.5 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700"
+          className={`min-w-[220px] flex-1 ${fieldClasses}`}
         />
-        <select
-          value={region}
-          onChange={(e) => resetPage(setRegion)(e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-transparent px-3 py-1.5 text-sm dark:border-zinc-700"
-        >
+        <select value={region} onChange={(e) => resetPage(setRegion)(e.target.value)} className={fieldClasses}>
           <option value="">Toutes régions</option>
           {regions.map((r) => (
             <option key={r} value={r}>
@@ -100,11 +99,7 @@ export function CessionsTable({
             </option>
           ))}
         </select>
-        <select
-          value={secteur}
-          onChange={(e) => resetPage(setSecteur)(e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-transparent px-3 py-1.5 text-sm dark:border-zinc-700"
-        >
+        <select value={secteur} onChange={(e) => resetPage(setSecteur)(e.target.value)} className={fieldClasses}>
           <option value="">Tous secteurs</option>
           {secteurs.map((s) => (
             <option key={s} value={s}>
@@ -115,7 +110,7 @@ export function CessionsTable({
         <select
           value={minScore}
           onChange={(e) => resetPage(setMinScore)(Number(e.target.value))}
-          className="rounded-lg border border-zinc-200 bg-transparent px-3 py-1.5 text-sm dark:border-zinc-700"
+          className={fieldClasses}
         >
           <option value={0}>Tous scores</option>
           <option value={70}>Score ≥ 70</option>
@@ -123,16 +118,16 @@ export function CessionsTable({
         </select>
         <button
           onClick={() => downloadCsv(filtered)}
-          className="ml-auto rounded-lg bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="transition-filters ml-auto rounded-full bg-ink px-5 py-2 text-sm font-medium text-white hover:opacity-85"
         >
           Export CSV ({filtered.length})
         </button>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto px-2 pb-2">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="text-xs uppercase text-zinc-400">
+            <tr className="text-xs uppercase tracking-wide text-tertiary">
               <th className="px-4 py-3 font-medium">Date</th>
               <th className="px-4 py-3 font-medium">Entreprise</th>
               <th className="px-4 py-3 font-medium">Ville</th>
@@ -144,9 +139,9 @@ export function CessionsTable({
           </thead>
           <tbody>
             {paginated.map((r) => (
-              <tr key={r.id} className="border-t border-zinc-100 dark:border-zinc-800">
-                <td className="whitespace-nowrap px-4 py-3 text-zinc-500">{formatDate(r.date_parution)}</td>
-                <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
+              <tr key={r.id} className="rounded-2xl bg-canvas [&>td:first-child]:rounded-l-2xl [&>td:last-child]:rounded-r-2xl">
+                <td className="tabular whitespace-nowrap px-4 py-3 text-muted">{formatDate(r.date_parution)}</td>
+                <td className="px-4 py-3 font-medium text-ink">
                   {r.url_bodacc ? (
                     <a href={r.url_bodacc} target="_blank" rel="noopener noreferrer" className="hover:underline">
                       {r.denomination ?? "—"}
@@ -155,12 +150,14 @@ export function CessionsTable({
                     r.denomination ?? "—"
                   )}
                 </td>
-                <td className="px-4 py-3 text-zinc-500">{r.ville ?? "—"}</td>
-                <td className="px-4 py-3 text-zinc-500">{r.region_nom ?? "—"}</td>
-                <td className="px-4 py-3 text-zinc-500">{r.naf_label ?? "—"}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-zinc-500">{effectifsLabel(r.effectifs)}</td>
+                <td className="px-4 py-3 text-muted">{r.ville ?? "—"}</td>
+                <td className="px-4 py-3 text-muted">{r.region_nom ?? "—"}</td>
+                <td className="px-4 py-3 text-muted">{r.naf_label ?? "—"}</td>
+                <td className="tabular whitespace-nowrap px-4 py-3 text-muted">{effectifsLabel(r.effectifs)}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${scoreBandStyles[scoreBand(r.score)]}`}>
+                  <span
+                    className={`tabular rounded-full px-2.5 py-1 text-xs font-medium ${scoreBandStyles[scoreBand(r.score)]}`}
+                  >
                     {r.score ?? "N/A"}
                   </span>
                 </td>
@@ -169,15 +166,15 @@ export function CessionsTable({
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <p className="p-8 text-center text-sm text-zinc-400">Aucune cession ne correspond aux filtres.</p>
+          <p className="p-8 text-center text-sm text-tertiary">Aucune cession ne correspond aux filtres.</p>
         )}
       </div>
 
       {paginated.length < filtered.length && (
-        <div className="border-t border-zinc-200 p-4 text-center dark:border-zinc-800">
+        <div className="p-6 pt-2 text-center">
           <button
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-lg border border-zinc-200 px-4 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="transition-filters rounded-full border border-ink px-5 py-2 text-sm font-medium text-ink hover:bg-ink hover:text-white"
           >
             Afficher plus ({filtered.length - paginated.length} restantes)
           </button>
