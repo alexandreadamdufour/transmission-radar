@@ -32,6 +32,12 @@ export function SiteFooter({ lastUpdatedAt }: { lastUpdatedAt: string | null }) 
             <a href="/feed.xml" className="text-muted hover:underline">
               Flux RSS des opportunités fortes
             </a>
+            <a href="/rapports" className="text-muted hover:underline">
+              Rapports mensuels
+            </a>
+            <a href="/confidentialite" className="text-muted hover:underline">
+              Confidentialité
+            </a>
             <p className="tabular">Mis à jour quotidiennement à 4h — dernière donnée : {formatUpdatedAt(lastUpdatedAt)}</p>
           </div>
         </div>

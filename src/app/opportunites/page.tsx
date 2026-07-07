@@ -3,6 +3,7 @@ import { getCessions, getLastUpdatedAt } from "@/lib/data";
 import { effectifsLabel, formatDate } from "@/lib/format";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { SiteFooter } from "@/components/SiteFooter";
+import { AlertSignupForm } from "@/components/AlertSignupForm";
 
 export const revalidate = 3600;
 
@@ -15,6 +16,8 @@ const THRESHOLD = 70;
 export default async function Opportunites() {
   const [rows, lastUpdatedAt] = await Promise.all([getCessions(), getLastUpdatedAt()]);
   const opportunities = rows.filter((r) => (r.score ?? 0) >= THRESHOLD).sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const regions = [...new Set(rows.map((r) => r.region_nom).filter((v): v is string => Boolean(v)))].sort();
+  const secteurs = [...new Set(rows.map((r) => r.naf_label).filter((v): v is string => Boolean(v)))].sort();
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -72,6 +75,14 @@ export default async function Opportunites() {
               Aucune opportunité au-dessus du seuil pour le moment — revenez après la prochaine collecte.
             </p>
           )}
+        </div>
+      </section>
+
+      <section className="bg-section-alt">
+        <div className="mx-auto max-w-[1200px] px-6 py-20">
+          <div className="mx-auto max-w-xl">
+            <AlertSignupForm regions={regions} secteurs={secteurs} />
+          </div>
         </div>
       </section>
 

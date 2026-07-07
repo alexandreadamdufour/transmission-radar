@@ -8,6 +8,7 @@ import { CessionsTable } from "@/components/CessionsTable";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Reveal } from "@/components/Reveal";
 import { FranceMapLoader } from "@/components/FranceMapLoader";
+import { AlertSignupForm } from "@/components/AlertSignupForm";
 
 export const revalidate = 3600;
 
@@ -240,6 +241,16 @@ export default async function Home() {
           <div className="mt-8">
             <CessionsTable rows={rows} regions={regions} secteurs={secteurs} />
           </div>
+        </div>
+      </section>
+
+      <section className="bg-canvas">
+        <div className="mx-auto max-w-[1200px] px-6 py-20">
+          <Reveal>
+            <div className="mx-auto max-w-xl">
+              <AlertSignupForm regions={regions} secteurs={secteurs} />
+            </div>
+          </Reveal>
         </div>
       </section>
 

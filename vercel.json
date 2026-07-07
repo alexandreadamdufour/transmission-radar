@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/ingest",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/alertes-digest",
+      "schedule": "0 7 * * 1"
+    },
+    {
+      "path": "/api/cron/rapport-mensuel",
+      "schedule": "0 5 1 * *"
     }
   ]
 }
