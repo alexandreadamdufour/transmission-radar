@@ -35,6 +35,9 @@ export function SiteFooter({ lastUpdatedAt }: { lastUpdatedAt: string | null }) 
             <a href="/rapports" className="text-muted hover:underline">
               Rapports mensuels
             </a>
+            <a href="/api" className="text-muted hover:underline">
+              API publique
+            </a>
             <a href="/confidentialite" className="text-muted hover:underline">
               Confidentialité
             </a>
