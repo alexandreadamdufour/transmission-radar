@@ -1,6 +1,11 @@
 # État du projet — Transmission Radar
 
-_Généré automatiquement à la fin du build. Dernière mise à jour : passe "profondeur analytique + signature visuelle" (carte de France, voir section dédiée en bas)._
+_Généré automatiquement à la fin du build. Dernière mise à jour : passe "service auquel on s'abonne" (alertes email, rapport mensuel, API publique — voir section dédiée en bas). **Action requise de ta part avant que les alertes fonctionnent en production : voir "Blocages actifs" ci-dessous.**_
+
+## Blocages actifs — action requise
+
+1. **Tables `alert_subscriptions` / `alert_sends` pas encore créées.** Migration prête dans `supabase/schema-alerts.sql` — exécute-la dans le SQL Editor Supabase (ou donne-moi une connection string Postgres). Tant que ce n'est pas fait, `/api/alertes/subscribe` répond `{"ok":false}` proprement (vérifié en prod) sans planter.
+2. **`RESEND_API_KEY` non configurée.** Donne-moi une clé Resend (+ éventuellement un domaine expéditeur vérifié, sinon `onboarding@resend.dev` suffit pour tester) et je la pousse sur Vercel. Tant qu'elle est absente, `sendDigest`/`sendConfirmationEmail` sont des no-op documentés qui retournent une erreur claire — aucun crash, mais aucun email ne part réellement.
 
 ## URLs
 
@@ -106,3 +111,33 @@ Le HTML de la page d'accueil pèse environ 640 Ko, car les ~5000 lignes les plus
 - `tsc --noEmit`, `pnpm lint`, `pnpm build` : OK après chaque commit.
 - Production testée via `curl` après déploiement : `/` (200), `/tendances` (200), `/data/departements-topo.json` (200), page 404 sur route inexistante (404), `/departement/75` (200), `/departement/999` (404, département sans données), `/annonce/[id]` (200).
 - Aucune action navigateur utilisée à aucun moment de cette session.
+
+## Service auto-abonnement — alertes, rapports, API (session 5)
+
+Objectif : transformer le dashboard en service auquel on s'abonne. Budget 2h, effectif ~15 min. Rien sacrifié malgré l'ordre de repli prévu (API → rapport) — tout est livré, y compris l'API qui devait être coupée en premier.
+
+### Bug critique découvert et corrigé en cours de route
+En construisant le rapport mensuel, `buildMonthlyReport()` retournait `null` pour tous les mois : `getCessions()` demandait `.limit(5000)` mais **PostgREST plafonne silencieusement toute requête à 1000 lignes** (réglage `db-max-rows` par défaut) — pas d'erreur, juste moins de lignes que demandé. Résultat : depuis la session de la carte de France, le dashboard, la carte, `/tendances` et `/departement/[code]` ne lisaient en réalité que les **5 derniers jours** de données au lieu de la fenêtre voulue, sans que rien ne le signale. Corrigé par une pagination en chunks de 1000 via `.range()` dans `src/lib/data.ts`, fenêtre relevée à 8000 lignes (~60 jours au volume actuel) pour couvrir de façon fiable le mois précédent complet. Commit `fix:` séparé, poussé avant la feature qui l'a révélé.
+
+### Feature 1 — Alertes email (cœur, rien sacrifié)
+- Formulaire "Recevoir les alertes" sur `/` et `/opportunites` (email, régions/secteurs multi-select en pastilles, score min, effectif min).
+- Double opt-in par email de confirmation, lien signé **HMAC-SHA256 stateless** (`src/lib/alerts-token.ts`) — pas de colonne `token` en base, la vérification recalcule la signature à partir de l'id + la finalité (`confirm`/`unsubscribe`), comparaison en temps constant (`crypto.timingSafeEqual`).
+- Migration `supabase/schema-alerts.sql` : `alert_subscriptions` (email, criteria jsonb, confirmed_at, unsubscribed_at) et `alert_sends` (log). RLS activée **sans aucune policy** = zéro accès anon/authenticated, tout passe par `service_role` côté serveur uniquement. **Non exécutée** — blocage n°1 ci-dessus.
+- Cron hebdo lundi 7h (`/api/cron/alertes-digest`, `CRON_SECRET`) : matche les cessions des 7 derniers jours contre les critères de chaque abonné confirmé, digest Resend (max 15, triées par score, DA éditoriale : serif, sobre, tabular-nums), pas de match = pas d'email, lien de désinscription signé dans chaque envoi.
+- `/alertes/confirmer`, `/alertes/desinscription`, `/confidentialite` (finalité, conservation 30j post-désinscription, droits) dans la DA.
+
+### Feature 2 — Rapport mensuel auto-généré
+- `/rapport/[yyyy-mm]` (ISR) : KPI du mois vs précédent, top 5 départements, mix sectoriel, distribution des scores, **3 insights par règles** (templates conditionnels sur les deltas — pas de LLM). `/rapports` index. `generateMetadata` + image OG dynamique par mois (`next/og`). Bouton copier le lien. Print stylesheet (classes `print:`, même pattern que `/departement/[code]`).
+- Cron le 1er du mois (`/api/cron/rapport-mensuel`) : `revalidatePath` sur le rapport du mois qui vient de se terminer plutôt que d'attendre la première requête organique.
+- Le digest hebdo mentionne le dernier rapport en footer (`previousMonthSlug()`, calcul pur, pas de requête supplémentaire).
+
+### Feature 3 — API publique lecture seule
+- `/api/v1/cessions` (filtres region/dept/famille/score_min/date_from/date_to, pagination page/per_page max 100) et `/api/v1/stats` (agrégats mensuels). CORS ouvert. Rate limit 60 req/min/IP via compteur en mémoire (`src/lib/rate-limit.ts`) — **non distribué** (pas d'Upstash ajouté), reset par instance serverless : protection de premier niveau, pas une garantie dure. À noter si l'abus devient un vrai problème.
+- `/api` : doc sobre, exemples curl, mention de citation obligatoire.
+
+### Vérifications (session 5)
+- `tsc --noEmit`, `pnpm lint`, `pnpm build` : OK après chaque commit (6 commits : fix pagination, feature alertes, feature rapport, feature API).
+- Round-trip du token signé vérifié en local (signature valide, mauvaise finalité rejetée, token altéré rejeté).
+- `buildMonthlyReport()` vérifié contre les vraies données une fois le bug corrigé (rapport juin 2026 : 3707 cessions, score moyen 31, insights cohérents).
+- Production : `/`, `/opportunites`, `/confidentialite`, `/rapports`, `/rapport/2026-06`, `/api`, `/api/v1/cessions`, `/api/v1/stats` (200) ; `/alertes/confirmer` et `/alertes/desinscription` sans token (200, message "lien invalide" — pas de crash) ; crons alertes-digest et rapport-mensuel sans secret (401) ; les 3 crons bien enregistrés côté Vercel (`vercel crons ls`). `POST /api/alertes/subscribe` testé en prod : échoue proprement (`{"ok":false}`) tant que la table n'existe pas, sans fuite de stack trace.
+- Aucune action navigateur utilisée.
