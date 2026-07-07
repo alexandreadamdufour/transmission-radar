@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { getCessions, getLastUpdatedAt } from "@/lib/data";
+import { computeDeptStats } from "@/lib/departements";
+import { computeRegionStats } from "@/lib/regions";
 import { AnalysisBarChart } from "@/components/AnalysisBarChart";
+import { FranceSmallMultiples } from "@/components/FranceSmallMultiples";
+import { RegionComparator } from "@/components/RegionComparator";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export const revalidate = 3600;
@@ -79,6 +83,9 @@ export default async function Tendances() {
     ((headcountData[1]?.count ?? 0) + (headcountData[2]?.count ?? 0)) / (rows.length || 1) * 100
   );
 
+  const deptStats = [...computeDeptStats(rows).values()];
+  const regionStats = computeRegionStats(rows);
+
   return (
     <div className="min-h-screen bg-canvas">
       <header className="bg-canvas">
@@ -105,7 +112,20 @@ export default async function Tendances() {
             Lecture analytique du flux de cessions suivi par Transmission Radar.
           </p>
 
-          <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="mt-10 rounded-[24px] bg-nested p-6">
+            <h2 className="text-sm font-medium text-tertiary">Petits multiples — lecture comparative</h2>
+            <div className="mt-4">
+              <FranceSmallMultiples stats={deptStats} />
+            </div>
+          </div>
+
+          {regionStats.length >= 2 && (
+            <div className="mt-6">
+              <RegionComparator regions={regionStats} />
+            </div>
+          )}
+
+          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <AnalysisCard
               title="Répartition par famille sectorielle"
               data={sectorData}
