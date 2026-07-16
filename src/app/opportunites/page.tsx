@@ -11,6 +11,10 @@ export const metadata = {
   title: "Opportunités",
 };
 
+// Alerts feature is disabled in prod: Supabase alert tables + RESEND_API_KEY
+// aren't provisioned yet. Set ALERTS_ENABLED=true once that's in place.
+const ALERTS_ENABLED = process.env.ALERTS_ENABLED === "true";
+
 const THRESHOLD = 70;
 
 export default async function Opportunites() {
@@ -78,13 +82,15 @@ export default async function Opportunites() {
         </div>
       </section>
 
-      <section className="bg-section-alt">
-        <div className="mx-auto max-w-[1200px] px-6 py-20">
-          <div className="mx-auto max-w-xl">
-            <AlertSignupForm regions={regions} secteurs={secteurs} />
+      {ALERTS_ENABLED && (
+        <section className="bg-section-alt">
+          <div className="mx-auto max-w-[1200px] px-6 py-20">
+            <div className="mx-auto max-w-xl">
+              <AlertSignupForm regions={regions} secteurs={secteurs} />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <SiteFooter lastUpdatedAt={lastUpdatedAt} />
     </div>

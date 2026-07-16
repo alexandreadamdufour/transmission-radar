@@ -4,7 +4,7 @@
 
 It is the companion tool to the Institut Sapiens policy note *"La vague de transmission des PME françaises (2025-2035)"*, which projects a structural wave of SME ownership transfers over the next decade as France's founder generation retires.
 
-**Live demo:** _add your Vercel URL here_
+**Live demo:** https://transmission-radar.vercel.app
 
 ## The problem
 
@@ -20,7 +20,7 @@ Transmission Radar ingests BODACC's "Ventes et cessions" (sales and transfers) a
 
 ## Screenshots
 
-> _Screenshots pending — see `ETAT.md` for why they weren't captured in this session._
+![Transmission Radar dashboard](docs/screenshots/dashboard.png)
 
 ## Architecture
 

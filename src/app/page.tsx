@@ -12,6 +12,10 @@ import { AlertSignupForm } from "@/components/AlertSignupForm";
 
 export const revalidate = 3600;
 
+// Alerts feature is disabled in prod: Supabase alert tables + RESEND_API_KEY
+// aren't provisioned yet. Set ALERTS_ENABLED=true once that's in place.
+const ALERTS_ENABLED = process.env.ALERTS_ENABLED === "true";
+
 function monthKey(dateStr: string): string {
   const d = new Date(dateStr);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -244,15 +248,17 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="bg-canvas">
-        <div className="mx-auto max-w-[1200px] px-6 py-20">
-          <Reveal>
-            <div className="mx-auto max-w-xl">
-              <AlertSignupForm regions={regions} secteurs={secteurs} />
-            </div>
-          </Reveal>
-        </div>
-      </section>
+      {ALERTS_ENABLED && (
+        <section className="bg-canvas">
+          <div className="mx-auto max-w-[1200px] px-6 py-20">
+            <Reveal>
+              <div className="mx-auto max-w-xl">
+                <AlertSignupForm regions={regions} secteurs={secteurs} />
+              </div>
+            </Reveal>
+          </div>
+        </section>
+      )}
 
       <SiteFooter lastUpdatedAt={lastUpdatedAt} />
     </div>
